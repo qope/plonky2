@@ -43,11 +43,8 @@ where
     let constraint_evals = (0..size)
         .map(|i| {
             let vars = StarkEvaluationVars {
-                local_values: &trace_ldes[i].clone().try_into().unwrap(),
-                next_values: &trace_ldes[(i + (1 << rate_bits)) % size]
-                    .clone()
-                    .try_into()
-                    .unwrap(),
+                local_values: &trace_ldes[i],
+                next_values: &trace_ldes[(i + (1 << rate_bits)) % size],
                 public_inputs: &public_inputs,
             };
 
@@ -133,10 +130,10 @@ where
     let lagrange_last_t = builder.add_virtual_extension_target();
     pw.set_extension_target(lagrange_last_t, lagrange_last);
 
-    let vars = StarkEvaluationTargets::<D, { S::COLUMNS }, { S::PUBLIC_INPUTS }> {
-        local_values: &locals_t.try_into().unwrap(),
-        next_values: &nexts_t.try_into().unwrap(),
-        public_inputs: &pis_t.try_into().unwrap(),
+    let vars = StarkEvaluationTargets::<D> {
+        local_values: &locals_t,
+        next_values: &nexts_t,
+        public_inputs: &pis_t,
     };
     let mut consumer = RecursiveConstraintConsumer::<F, D>::new(
         builder.zero_extension(),
