@@ -19,11 +19,6 @@ use crate::vars::{StarkEvaluationTargets, StarkEvaluationVars};
 
 /// Represents a STARK system.
 pub trait Stark<F: RichField + Extendable<D>, const D: usize>: Sync {
-    /// The total number of columns in the trace.
-    const COLUMNS: usize;
-    /// The number of public inputs.
-    const PUBLIC_INPUTS: usize;
-
     /// Evaluate constraints at a vector of points.
     ///
     /// The points are elements of a field `FE`, a degree `D2` extension of `F`. This lets us
@@ -88,9 +83,9 @@ pub trait Stark<F: RichField + Extendable<D>, const D: usize>: Sync {
     ) -> FriInstanceInfo<F, D> {
         let mut oracles = vec![];
 
-        let trace_info = FriPolynomialInfo::from_range(oracles.len(), 0..Self::COLUMNS);
+        let trace_info = FriPolynomialInfo::from_range(oracles.len(), 0..config.num_columns);
         oracles.push(FriOracleInfo {
-            num_polys: Self::COLUMNS,
+            num_polys: config.num_columns,
             blinding: false,
         });
 
@@ -141,9 +136,9 @@ pub trait Stark<F: RichField + Extendable<D>, const D: usize>: Sync {
     ) -> FriInstanceInfoTarget<D> {
         let mut oracles = vec![];
 
-        let trace_info = FriPolynomialInfo::from_range(oracles.len(), 0..Self::COLUMNS);
+        let trace_info = FriPolynomialInfo::from_range(oracles.len(), 0..config.num_columns);
         oracles.push(FriOracleInfo {
-            num_polys: Self::COLUMNS,
+            num_polys: config.num_columns,
             blinding: false,
         });
 

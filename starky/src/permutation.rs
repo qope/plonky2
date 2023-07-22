@@ -270,8 +270,6 @@ pub(crate) fn eval_permutation_checks<F, FE, P, S, const D: usize, const D2: usi
     FE: FieldExtension<D2, BaseField = F>,
     P: PackedField<Scalar = FE>,
     S: Stark<F, D>,
-    [(); S::COLUMNS]:,
-    [(); S::PUBLIC_INPUTS]:,
 {
     let PermutationCheckVars {
         local_zs,
@@ -336,8 +334,6 @@ pub(crate) fn eval_permutation_checks_circuit<F, S, const D: usize>(
 ) where
     F: RichField + Extendable<D>,
     S: Stark<F, D>,
-    [(); S::COLUMNS]:,
-    [(); S::PUBLIC_INPUTS]:,
 {
     let PermutationCheckDataTarget {
         local_zs,
