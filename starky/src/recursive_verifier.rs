@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use core::iter::once;
 
 use anyhow::{ensure, Result};
@@ -37,10 +36,9 @@ pub fn verify_stark_proof_circuit<
     inner_config: &StarkConfig,
 ) where
     C::Hasher: AlgebraicHasher<F>,
-    [(); S::COLUMNS]:,
-    [(); S::PUBLIC_INPUTS]:,
 {
-    assert_eq!(proof_with_pis.public_inputs.len(), S::PUBLIC_INPUTS);
+    assert!(proof_with_pis.proof.openings.local_values.len() == inner_config.num_columns);
+    assert!(proof_with_pis.public_inputs.len() == inner_config.num_public_inputs);
     let degree_bits = proof_with_pis.proof.recover_degree_bits(inner_config);
     let challenges = with_context!(
         builder,
@@ -73,8 +71,6 @@ fn verify_stark_proof_with_challenges_circuit<
     degree_bits: usize,
 ) where
     C::Hasher: AlgebraicHasher<F>,
-    [(); S::COLUMNS]:,
-    [(); S::PUBLIC_INPUTS]:,
 {
     check_permutation_options(&stark, &proof_with_pis, &challenges).unwrap();
     let one = builder.one_extension();
@@ -90,17 +86,14 @@ fn verify_stark_proof_with_challenges_circuit<
         permutation_zs_next,
         quotient_polys,
     } = &proof.openings;
-    let vars: StarkEvaluationTargets<'_, D, { S::COLUMNS }, { S::PUBLIC_INPUTS }> =
-        StarkEvaluationTargets {
-            local_values: &local_values.to_vec().try_into().unwrap(),
-            next_values: &next_values.to_vec().try_into().unwrap(),
-            public_inputs: &public_inputs
-                .into_iter()
-                .map(|&t| builder.convert_to_ext(t))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap(),
-        };
+    let vars: StarkEvaluationTargets<'_, D> = StarkEvaluationTargets {
+        local_values: &local_values,
+        next_values: &next_values,
+        public_inputs: &public_inputs
+            .into_iter()
+            .map(|&t| builder.convert_to_ext(t))
+            .collect_vec(),
+    };
 
     let zeta_pow_deg = builder.exp_power_of_2_extension(challenges.stark_zeta, degree_bits);
     let z_h_zeta = builder.sub_extension(zeta_pow_deg, one);
@@ -202,7 +195,7 @@ pub fn add_virtual_stark_proof_with_pis<
     degree_bits: usize,
 ) -> StarkProofWithPublicInputsTarget<D> {
     let proof = add_virtual_stark_proof::<F, S, D>(builder, stark, config, degree_bits);
-    let public_inputs = builder.add_virtual_targets(S::PUBLIC_INPUTS);
+    let public_inputs = builder.add_virtual_targets(config.num_public_inputs);
     StarkProofWithPublicInputsTarget {
         proof,
         public_inputs,
@@ -218,7 +211,7 @@ pub fn add_virtual_stark_proof<F: RichField + Extendable<D>, S: Stark<F, D>, con
     let fri_params = config.fri_params(degree_bits);
     let cap_height = fri_params.config.cap_height;
 
-    let num_leaves_per_oracle = once(S::COLUMNS)
+    let num_leaves_per_oracle = once(config.num_columns)
         .chain(
             stark
                 .uses_permutation_args()
@@ -247,8 +240,8 @@ fn add_stark_opening_set_target<F: RichField + Extendable<D>, S: Stark<F, D>, co
 ) -> StarkOpeningSetTarget<D> {
     let num_challenges = config.num_challenges;
     StarkOpeningSetTarget {
-        local_values: builder.add_virtual_extension_targets(S::COLUMNS),
-        next_values: builder.add_virtual_extension_targets(S::COLUMNS),
+        local_values: builder.add_virtual_extension_targets(config.num_columns),
+        next_values: builder.add_virtual_extension_targets(config.num_columns),
         permutation_zs: stark
             .uses_permutation_args()
             .then(|| builder.add_virtual_extension_targets(stark.num_permutation_batches(config))),
