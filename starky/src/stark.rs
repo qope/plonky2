@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use plonky2::field::extension::{Extendable, FieldExtension};
 use plonky2::field::packed::PackedField;
+use plonky2::field::polynomial::PolynomialValues;
 use plonky2::fri::structure::{
     FriBatchInfo, FriBatchInfoTarget, FriInstanceInfo, FriInstanceInfoTarget, FriOracleInfo,
     FriPolynomialInfo,
@@ -209,4 +210,6 @@ pub trait Stark<F: RichField + Extendable<D>, const D: usize>: Sync {
             self.permutation_batch_size(),
         )
     }
+
+    fn constants(&self) -> Vec<PolynomialValues<F>>;
 }

@@ -78,6 +78,24 @@ where
     let mut challenger = Challenger::new();
     challenger.observe_cap(&trace_cap);
 
+    // commit constraints
+    let constants_commitment = timed!(
+        timing,
+        "compute constants commitment",
+        PolynomialBatch::<F, C, D>::from_values(
+            // TODO: Cloning this isn't great; consider having `from_values` accept a reference,
+            // or having `compute_permutation_z_polys` read trace values from the `PolynomialBatch`.
+            stark.constants(),
+            rate_bits,
+            false,
+            cap_height,
+            timing,
+            None,
+        )
+    );
+    let constants_cap = constants_commitment.merkle_tree.cap.clone();
+    challenger.observe_cap(&constants_cap);
+
     // Permutation arguments.
     let permutation_zs_commitment_challenges = stark.uses_permutation_args().then(|| {
         let permutation_challenge_sets = get_n_permutation_challenge_sets(
@@ -120,6 +138,7 @@ where
     let quotient_polys = compute_quotient_polys::<F, <F as Packable>::Packing, C, S, D>(
         &stark,
         &trace_commitment,
+        &constants_commitment,
         &permutation_zs_commitment_challenges,
         public_inputs.clone(),
         alphas,
@@ -164,6 +183,7 @@ where
         zeta,
         g,
         &trace_commitment,
+        &constants_commitment,
         permutation_zs_commitment,
         &quotient_commitment,
     );
@@ -187,6 +207,7 @@ where
     );
     let proof = StarkProof {
         trace_cap,
+        constants_cap,
         permutation_zs_cap,
         quotient_polys_cap,
         openings,
@@ -204,6 +225,7 @@ where
 fn compute_quotient_polys<'a, F, P, C, S, const D: usize>(
     stark: &S,
     trace_commitment: &'a PolynomialBatch<F, C, D>,
+    constants_commitment: &'a PolynomialBatch<F, C, D>,
     permutation_zs_commitment_challenges: &'a Option<(
         PolynomialBatch<F, C, D>,
         Vec<PermutationChallengeSet<F>>,
@@ -247,6 +269,12 @@ where
             .try_into()
             .unwrap()
     };
+    let get_constants_packed = |i_start| -> Vec<P> {
+        constants_commitment
+            .get_lde_values_packed(i_start, step)
+            .try_into()
+            .unwrap()
+    };
 
     // Last element of the subgroup.
     let last = F::primitive_root_of_unity(degree_bits).inverse();
@@ -280,6 +308,7 @@ where
             let vars = StarkEvaluationVars {
                 local_values: &get_trace_values_packed(i_start),
                 next_values: &get_trace_values_packed(i_next_start),
+                constants: &get_constants_packed(i_start),
                 public_inputs: &public_inputs,
             };
             let permutation_check_data = permutation_zs_commitment_challenges.as_ref().map(

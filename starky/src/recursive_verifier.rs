@@ -82,6 +82,7 @@ fn verify_stark_proof_with_challenges_circuit<
     let StarkOpeningSetTarget {
         local_values,
         next_values,
+        constants,
         permutation_zs,
         permutation_zs_next,
         quotient_polys,
@@ -89,6 +90,7 @@ fn verify_stark_proof_with_challenges_circuit<
     let vars: StarkEvaluationTargets<'_, D> = StarkEvaluationTargets {
         local_values: &local_values,
         next_values: &next_values,
+        constants: &constants,
         public_inputs: &public_inputs
             .into_iter()
             .map(|&t| builder.convert_to_ext(t))
@@ -226,6 +228,7 @@ pub fn add_virtual_stark_proof<F: RichField + Extendable<D>, S: Stark<F, D>, con
 
     StarkProofTarget {
         trace_cap: builder.add_virtual_cap(cap_height),
+        constants_cap: builder.add_virtual_cap(cap_height),
         permutation_zs_cap,
         quotient_polys_cap: builder.add_virtual_cap(cap_height),
         openings: add_stark_opening_set_target::<F, S, D>(builder, stark, config),
@@ -242,6 +245,7 @@ fn add_stark_opening_set_target<F: RichField + Extendable<D>, S: Stark<F, D>, co
     StarkOpeningSetTarget {
         local_values: builder.add_virtual_extension_targets(config.num_columns),
         next_values: builder.add_virtual_extension_targets(config.num_columns),
+        constants: builder.add_virtual_extension_targets(config.num_constants),
         permutation_zs: stark
             .uses_permutation_args()
             .then(|| builder.add_virtual_extension_targets(stark.num_permutation_batches(config))),
@@ -289,6 +293,7 @@ pub fn set_stark_proof_target<F, C: GenericConfig<D, F = F>, W, const D: usize>(
     W: WitnessWrite<F>,
 {
     witness.set_cap_target(&proof_target.trace_cap, &proof.trace_cap);
+    witness.set_cap_target(&proof_target.constants_cap, &proof.constants_cap);
     witness.set_cap_target(&proof_target.quotient_polys_cap, &proof.quotient_polys_cap);
 
     witness.set_fri_openings(

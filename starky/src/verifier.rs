@@ -55,6 +55,7 @@ pub(crate) fn verify_stark_proof_with_challenges<
     let StarkOpeningSet {
         local_values,
         next_values,
+        constants,
         permutation_zs,
         permutation_zs_next,
         quotient_polys,
@@ -62,6 +63,7 @@ pub(crate) fn verify_stark_proof_with_challenges<
     let vars = StarkEvaluationVars {
         local_values: &local_values,
         next_values: &next_values,
+        constants: &constants,
         public_inputs: &public_inputs
             .into_iter()
             .map(F::Extension::from_basefield)
@@ -152,6 +154,7 @@ where
 
     let StarkProof {
         trace_cap,
+        constants_cap,
         permutation_zs_cap,
         quotient_polys_cap,
         openings,
@@ -163,18 +166,21 @@ where
     let StarkOpeningSet {
         local_values,
         next_values,
+        constants,
         permutation_zs,
         permutation_zs_next,
         quotient_polys,
     } = openings;
 
     ensure!(public_inputs.len() == config.num_public_inputs);
+    ensure!(constants.len() == config.num_constants);
 
     let fri_params = config.fri_params(degree_bits);
     let cap_height = fri_params.config.cap_height;
     let num_zs = stark.num_permutation_batches(config);
 
     ensure!(trace_cap.height() == cap_height);
+    ensure!(constants_cap.height() == cap_height);
     ensure!(quotient_polys_cap.height() == cap_height);
 
     ensure!(local_values.len() == config.num_columns);
