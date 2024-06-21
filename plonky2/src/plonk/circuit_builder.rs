@@ -168,7 +168,7 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     generators: Vec<WitnessGeneratorRef<F, D>>,
 
     /// Hooks constrained at the beginning of the circuit build
-    hooks: Vec<BuilderHookRef<F, D>>,
+    hooks: HashMap<&'static str, BuilderHookRef<F, D>>,
 
     constants_to_targets: HashMap<F, Target>,
     targets_to_constants: HashMap<Target, F>,
@@ -221,7 +221,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             copy_constraints: Vec::new(),
             context_log: ContextTree::new(),
             generators: Vec::new(),
-            hooks: Vec::new(),
+            hooks: HashMap::new(),
             constants_to_targets: HashMap::new(),
             targets_to_constants: HashMap::new(),
             base_arithmetic_results: HashMap::new(),
@@ -580,8 +580,16 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             .push(WitnessGeneratorRef::new(generator.adapter()));
     }
 
-    pub fn add_hooks(&mut self, hooks: Vec<BuilderHookRef<F, D>>) {
-        self.hooks.extend(hooks);
+    pub fn add_hook(&mut self, key: &'static str, hook: BuilderHookRef<F, D>) {
+        self.hooks.insert(key, hook);
+    }
+
+    pub fn get_hook(&self, key: &'static str) -> Option<&BuilderHookRef<F, D>> {
+        self.hooks.get(key)
+    }
+
+    pub fn get_hook_mut(&mut self, key: &'static str) -> Option<&mut BuilderHookRef<F, D>> {
+        self.hooks.get_mut(key)
     }
 
     /// Returns a routable target with a value of 0.
@@ -1069,7 +1077,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         // Execute all hooks
         let hooks = take(&mut self.hooks);
-        for hook in hooks {
+        for (_, hook) in hooks {
             hook.0.constrain(&mut self);
         }
 

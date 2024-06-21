@@ -1,5 +1,6 @@
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+use core::any::Any;
 use core::fmt::Debug;
 
 use plonky2_field::extension::Extendable;
@@ -12,7 +13,12 @@ use crate::plonk::circuit_builder::CircuitBuilder;
 pub trait BuilderHook<F: RichField + Extendable<D>, const D: usize>:
     'static + Send + Sync + Debug
 {
+    /// Constraint that is imposed at the beginning of the circuit build.
     fn constrain(&self, builder: &mut CircuitBuilder<F, D>);
+
+    /// Returns a reference to the hook as `dyn Any`.
+    /// This is used for downcasting.
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Debug)]
