@@ -3,6 +3,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, sync::Arc, vec, vec::Vec};
 use core::cmp::max;
+use core::mem::take;
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, sync::Arc, time::Instant};
 
@@ -47,6 +48,7 @@ use crate::plonk::copy_constraint::CopyConstraint;
 use crate::plonk::permutation_argument::Forest;
 use crate::plonk::plonk_common::PlonkOracle;
 use crate::timed;
+use crate::util::builder_hook::BuilderHookRef;
 use crate::util::context_tree::ContextTree;
 use crate::util::partial_products::num_partial_products;
 use crate::util::timing::TimingTree;
@@ -165,6 +167,9 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     /// Generators used to generate the witness.
     generators: Vec<WitnessGeneratorRef<F, D>>,
 
+    /// Hooks constrained at the beginning of the circuit build
+    hooks: Vec<BuilderHookRef<F, D>>,
+
     constants_to_targets: HashMap<F, Target>,
     targets_to_constants: HashMap<Target, F>,
 
@@ -216,6 +221,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             copy_constraints: Vec::new(),
             context_log: ContextTree::new(),
             generators: Vec::new(),
+            hooks: Vec::new(),
             constants_to_targets: HashMap::new(),
             targets_to_constants: HashMap::new(),
             base_arithmetic_results: HashMap::new(),
@@ -572,6 +578,10 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     pub fn add_simple_generator<G: SimpleGenerator<F, D>>(&mut self, generator: G) {
         self.generators
             .push(WitnessGeneratorRef::new(generator.adapter()));
+    }
+
+    pub fn add_hooks(&mut self, hooks: Vec<BuilderHookRef<F, D>>) {
+        self.hooks.extend(hooks);
     }
 
     /// Returns a routable target with a value of 0.
@@ -1056,6 +1066,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         #[cfg(feature = "std")]
         let start = Instant::now();
+
+        // Execute all hooks
+        let hooks = take(&mut self.hooks);
+        for hook in hooks {
+            hook.0.constrain(&mut self);
+        }
 
         let rate_bits = self.config.fri_config.rate_bits;
         let cap_height = self.config.fri_config.cap_height;
